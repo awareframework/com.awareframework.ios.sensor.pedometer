@@ -7,12 +7,26 @@
 //
 
 import UIKit
+import com_awareframework_ios_sensor_pedometer
 
 class ViewController: UIViewController {
 
+    var sensor:PedometerSensor?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        sensor = PedometerSensor.init(PedometerSensor.Config().apply{config in
+            config.debug = true
+            config.sensorObserver = Observer()
+        })
+        sensor?.start()
+    }
+    
+    class Observer:PedometerObserver {
+        func onPedometerChanged(data: PedometerData) {
+            print(data)
+        }
     }
 
     override func didReceiveMemoryWarning() {

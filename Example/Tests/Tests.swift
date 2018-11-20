@@ -1,5 +1,5 @@
 import XCTest
-import com.awareframework.ios.sensor.pedometer
+import com_awareframework_ios_sensor_pedometer
 
 class Tests: XCTestCase {
     
