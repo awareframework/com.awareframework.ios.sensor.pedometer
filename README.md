@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/cocoapods/l/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 [![Platform](https://img.shields.io/cocoapods/p/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 
-Aware Pedoemter allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended. 
+Aware Pedometer allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended. 
 
 ## Requirements
 iOS 10 or later
