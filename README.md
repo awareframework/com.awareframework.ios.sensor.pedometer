@@ -1,13 +1,11 @@
 # Aware Pedometer
 
-[![CI Status](https://img.shields.io/travis/tetujin/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://travis-ci.org/tetujin/com.awareframework.ios.sensor.pedometer)
+[![CI Status](https://img.shields.io/travis/awareframework/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://travis-ci.org/awareframework/com.awareframework.ios.sensor.pedometer)
 [![Version](https://img.shields.io/cocoapods/v/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 [![License](https://img.shields.io/cocoapods/l/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 [![Platform](https://img.shields.io/cocoapods/p/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 
-## Example
 
-To run the example project, clone the repo, and run `pod install` from the Example directory first.
 
 ## Requirements
 iOS 10 or later
@@ -28,6 +26,66 @@ import com_awareframework_ios_sensor_pedometer
 
 3. Add a description of `NSMotionUsageDescription` into Info.plist
 
+## Public functions
+
+### PedometerSensor
+
++ `init(config:PedometerSensor.Config?)` : Initializes the gedometer sensor with the optional configuration.
++ `start()`: Starts the gyroscope sensor with the optional configuration.
++ `stop()`: Stops the service.
+
+### GyroscopeSensor.Config
+
+Class to hold the configuration of the sensor.
+
+#### Fields
++ `sensorObserver: PedometerObserver`: Callback for live data updates.
++ `interval : Int`: A sampling duration (minute) of a sample. (default = 10)
++ `enabled: Boolean` Sensor is enabled or not. (default = `false`)
++ `debug: Boolean` enable/disable logging to Xcode console. (default = `false`)
++ `label: String` Label for the data. (default = "")
++ `deviceId: String` Id of the device that will be associated with the events and the sensor. (default = "")
++ `dbEncryptionKey` Encryption key for the database. (default = `null`)
++ `dbType: Engine` Which db engine to use for saving data. (default = `Engine.DatabaseType.NONE`)
++ `dbPath: String` Path of the database. (default = "aware_gyroscope")
++ `dbHost: String` Host for syncing the database. (default = `null`)
+
+## Broadcasts
+
+### Fired Broadcasts
+
++ `PedometerSensor.ACTION_AWARE_GYROSCOPE` fired when pedometer saved data to db after the period ends.
+
+### Received Broadcasts
+
++ `PedometerSensor.ACTION_AWARE_GYROSCOPE_START`: received broadcast to start the sensor.
++ `PedometerSensor.ACTION_AWARE_GYROSCOPE_STOP`: received broadcast to stop the sensor.
++ `PedometerSensor.ACTION_AWARE_GYROSCOPE_SYNC`: received broadcast to send sync attempt to the host.
++ `PedometerSensor.ACTION_AWARE_GYROSCOPE_SET_LABEL`: received broadcast to set the data label. Label is expected in the `PedometerSensor.EXTRA_LABEL` field of the intent extras.
+
+## Data Representations
+
+### PedometerSensor Data
+
+Contains the raw sensor data.
+
+| Field     | Type   | Description                                                     |
+| --------- | ------ | --------------------------------------------------------------- |
+| startDate      | Int64  | The start time for the pedometer data by unixtime milliseconds since 1970  |
+| endDate        | Int64  | The end time for the pedometer data by unixtime milliseconds since 1970    |
+| numberOfSteps  | Int64  |      The number of steps taken by the user. |
+| distance       | Double  |    The estimated distance (in meters) traveled by the user. |
+| currentPace    | Double  | The current pace of the user, measured in seconds per meter. |
+| currentCadence | Double  | The rate at which steps are taken, measured in steps per second.  |
+| floorsAscended | Double  |The approximate number of floors ascended by walking.|
+| floorsDescended   | Double  |The approximate number of floors descended by walking.|
+| averageActivePace | Double  |The average pace of the user, measured in seconds per meter.
+| label     | String | Customizable label. Useful for data calibration or traceability |
+| deviceId  | String | AWARE device UUID                                               |
+| label     | String | Customizable label. Useful for data calibration or traceability |
+| timestamp | Int64   | Unixtime milliseconds since 1970                                |
+| timezone  | Int    | Raw timezone offset of the device                          |
+| os        | String | Operating system of the device (e.g., ios)                    |
 
 ## Example usage
 ```swift
@@ -49,7 +107,13 @@ class Observer:PedometerObserver {
 
 ## Author
 
-Yuuki Nishiyama, tetujin@ht.sfc.keio.ac.jp
+Yuuki Nishiyama, yuuki.nishiyama@oulu.fi
+
+## Related Links
+
+- [ Apple | CoreMotion ](https://developer.apple.com/documentation/coremotion)
+- [ Apple | CMPedometer ](https://developer.apple.com/documentation/coremotion/cmpedometer)
+- [ Apple | CMPedometerData ](https://developer.apple.com/documentation/coremotion/cmpedometerdata)
 
 ## License
 Copyright (c) 2018 AWARE Mobile Context Instrumentation Middleware/Framework (http://www.awareframework.com)
