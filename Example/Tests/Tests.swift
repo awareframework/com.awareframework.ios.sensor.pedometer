@@ -18,6 +18,30 @@ class Tests: XCTestCase {
         XCTAssert(true, "Pass")
     }
     
+    func testConfig(){
+        let interval = 20
+        let config:Dictionary<String,Any> = ["interval":interval]
+        
+        // default
+        var sensor = PedometerSensor()
+        XCTAssertEqual(sensor.CONFIG.interval, 10)
+        
+        // apply
+        sensor = PedometerSensor.init(PedometerSensor.Config().apply{config in
+            config.interval = interval
+        })
+        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        
+        // init with dictionary
+        sensor = PedometerSensor.init(PedometerSensor.Config(config))
+        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        
+        // set
+        sensor = PedometerSensor.init()
+        sensor.CONFIG.set(config: config)
+        XCTAssertEqual(sensor.CONFIG.interval, interval)
+    }
+    
     func testPerformanceExample() {
         // This is an example of a performance test case.
         self.measure() {

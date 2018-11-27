@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'com.awareframework.ios.sensor.pedometer'
   s.version          = '0.1.0'
-  s.summary          = 'A short description of com.awareframework.ios.sensor.pedometer.'
+  s.summary          = 'A Pedometer Module for AWARE Framework'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
 #   * Finally, don't worry about the indent, CocoaPods strips it!
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+The Pedometer sensor allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended.
                        DESC
 
   s.homepage         = 'https://github.com/awareframework/com.awareframework.ios.sensor.pedometer'
@@ -41,6 +41,7 @@ TODO: Add long description of the pod here.
   # s.public_header_files = 'Pod/Classes/**/*.h'
   s.frameworks = 'CoreMotion' #, 'MapKit'
   # s.dependency 'AFNetworking', '~> 2.3'
-  s.dependency 'com.awareframework.ios.sensor.core'
+
+  s.dependency 'com.awareframework.ios.sensor.core', '~>0.3.1'
   
 end

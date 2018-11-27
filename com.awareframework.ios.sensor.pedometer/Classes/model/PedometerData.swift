@@ -11,8 +11,8 @@ import com_awareframework_ios_sensor_core
 public class PedometerData: AwareObject {
     public static let TABLE_NAME = "pedometerData"
     
-    @objc dynamic public var from:Double = 0;
-    @objc dynamic public var to:Double   = 0;
+    @objc dynamic public var startDate:Int64 = 0;
+    @objc dynamic public var endDate:Int64  = 0;
     @objc dynamic public var frequencySpeed:Double  = 0;
     @objc dynamic public var numberOfSteps:Int   = 0;
     @objc dynamic public var distance:Double        = 0;
@@ -24,8 +24,8 @@ public class PedometerData: AwareObject {
     
     public override func toDictionary() -> Dictionary<String, Any> {
         var dict = super.toDictionary()
-        dict["from"] = from
-        dict["to"]   = to
+        dict["startDate"] = startDate
+        dict["endDate"]   = endDate
         dict["frequencySpeed"]  = frequencySpeed
         dict["numberOfSteps"]   = numberOfSteps
         dict["distance"]        = distance

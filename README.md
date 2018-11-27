@@ -1,11 +1,11 @@
-# Aware Pedometer
+# AWARE: Pedometer
 
 [![CI Status](https://img.shields.io/travis/awareframework/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://travis-ci.org/awareframework/com.awareframework.ios.sensor.pedometer)
 [![Version](https://img.shields.io/cocoapods/v/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 [![License](https://img.shields.io/cocoapods/l/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 [![Platform](https://img.shields.io/cocoapods/p/com.awareframework.ios.sensor.pedometer.svg?style=flat)](https://cocoapods.org/pods/com.awareframework.ios.sensor.pedometer)
 
-Aware Pedometer allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended. 
+The Pedometer sensor allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended. 
 
 ## Requirements
 iOS 10 or later
@@ -30,11 +30,11 @@ import com_awareframework_ios_sensor_pedometer
 
 ### PedometerSensor
 
-+ `init(config:PedometerSensor.Config?)` : Initializes the gedometer sensor with the optional configuration.
-+ `start()`: Starts the gyroscope sensor with the optional configuration.
++ `init(config:PedometerSensor.Config?)` : Initializes the pedometer sensor with the optional configuration.
++ `start()`: Starts the pedometer sensor with the optional configuration.
 + `stop()`: Stops the service.
 
-### GyroscopeSensor.Config
+### PedometerSensor.Config
 
 Class to hold the configuration of the sensor.
 
@@ -47,21 +47,21 @@ Class to hold the configuration of the sensor.
 + `deviceId: String` Id of the device that will be associated with the events and the sensor. (default = "")
 + `dbEncryptionKey` Encryption key for the database. (default = `null`)
 + `dbType: Engine` Which db engine to use for saving data. (default = `Engine.DatabaseType.NONE`)
-+ `dbPath: String` Path of the database. (default = "aware_gyroscope")
++ `dbPath: String` Path of the database. (default = "aware_pedometer")
 + `dbHost: String` Host for syncing the database. (default = `null`)
 
 ## Broadcasts
 
 ### Fired Broadcasts
 
-+ `PedometerSensor.ACTION_AWARE_GYROSCOPE` fired when pedometer saved data to db after the period ends.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER` fired when pedometer saved data to db after the period ends.
 
 ### Received Broadcasts
 
-+ `PedometerSensor.ACTION_AWARE_GYROSCOPE_START`: received broadcast to start the sensor.
-+ `PedometerSensor.ACTION_AWARE_GYROSCOPE_STOP`: received broadcast to stop the sensor.
-+ `PedometerSensor.ACTION_AWARE_GYROSCOPE_SYNC`: received broadcast to send sync attempt to the host.
-+ `PedometerSensor.ACTION_AWARE_GYROSCOPE_SET_LABEL`: received broadcast to set the data label. Label is expected in the `PedometerSensor.EXTRA_LABEL` field of the intent extras.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER_START`: received broadcast to start the sensor.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER_STOP`: received broadcast to stop the sensor.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER_SYNC`: received broadcast to send sync attempt to the host.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER_SET_LABEL`: received broadcast to set the data label. Label is expected in the `PedometerSensor.EXTRA_LABEL` field of the intent extras.
 
 ## Data Representations
 

@@ -20,7 +20,7 @@ public class PedometerSensor: AwareSensor {
     var inRecoveryLoop = false
     
     public class Config:SensorConfig {
-        public var interval = 10.0 // min
+        public var interval:Int = 10 // min
         public var sensorObserver:PedometerObserver?
         
         public override init() {
@@ -28,8 +28,11 @@ public class PedometerSensor: AwareSensor {
             dbPath = "aware_pedometer"
         }
         
-        public convenience init(_ json:JSON){
-            self.init()
+        public override func set(config: Dictionary<String, Any>) {
+            super.set(config: config)
+            if let interval = config["interval"] as? Int{
+                self.interval = interval
+            }
         }
         
         public func apply(closure:(_ config: PedometerSensor.Config) -> Void) -> Self {
@@ -76,7 +79,7 @@ public class PedometerSensor: AwareSensor {
         if pedometer == nil {
             pedometer = CMPedometer()
             if timer == nil {
-                timer = Timer.scheduledTimer(withTimeInterval: self.CONFIG.interval, repeats: true, block: { timer in
+                timer = Timer.scheduledTimer(withTimeInterval: Double(self.CONFIG.interval), repeats: true, block: { timer in
                     if !self.inRecoveryLoop {
                         self.getPedometerData()
                     }else{
@@ -112,14 +115,14 @@ public class PedometerSensor: AwareSensor {
             let diffBetweemNowAndFromDate = now.minutes(from: fromDate)
             // if self.CONFIG.debug{ print(PedometerSensor.TAG, "diff: \(diffBetweemNowAndFromDate) min") }
             if diffBetweemNowAndFromDate > Int(CONFIG.interval) {
-                let toDate = fromDate.addingTimeInterval(60*self.CONFIG.interval)
+                let toDate = fromDate.addingTimeInterval( 60.0 * Double(self.CONFIG.interval) )
                 uwPedometer.queryPedometerData(from: fromDate, to: toDate) { (pedometerData, error) in
                     
                     // save pedometer data
                     if let pedoData = pedometerData {
                         let data = PedometerData()
-                        data.from = fromDate.timeIntervalSince1970 * 1000
-                        data.to   = toDate.timeIntervalSince1970   * 1000
+                        data.startDate = Int64(fromDate.timeIntervalSince1970 * 1000)
+                        data.endDate   = Int64(toDate.timeIntervalSince1970   * 1000)
                         data.numberOfSteps = pedoData.numberOfSteps.intValue
                         
                         if let currentCadence = pedoData.currentCadence{
