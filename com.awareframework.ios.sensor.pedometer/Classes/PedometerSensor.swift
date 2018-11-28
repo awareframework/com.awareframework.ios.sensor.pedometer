@@ -101,7 +101,7 @@ public class PedometerSensor: AwareSensor {
     
     override public func sync(force: Bool = false) {
         if let engine = self.dbEngine {
-            engine.startSync(PedometerData.TABLE_NAME, DbSyncConfig().apply{config in
+            engine.startSync(PedometerData.TABLE_NAME, PedometerData.self, DbSyncConfig().apply{config in
                 config.debug = self.CONFIG.debug
             })
             self.notificationCenter.post(name: .actionAwarePedometerSync , object: nil)
