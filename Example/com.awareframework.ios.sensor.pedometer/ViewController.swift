@@ -16,11 +16,11 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        sensor = PedometerSensor.init(PedometerSensor.Config().apply{config in
-            config.debug = true
-            config.sensorObserver = Observer()
-        })
-        sensor?.start()
+//        sensor = PedometerSensor.init(PedometerSensor.Config().apply{config in
+//            config.debug = true
+//            config.sensorObserver = Observer()
+//        })
+//        sensor?.start()
     }
     
     class Observer:PedometerObserver {

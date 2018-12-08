@@ -20,7 +20,23 @@ public class PedometerSensor: AwareSensor {
     var inRecoveryLoop = false
     
     public class Config:SensorConfig {
+        
+        /**
+         * The sensing interval (minute) for step counts. (default = 10 min)
+         * This value has to be greater then or equal to 0.
+         */
         public var interval:Int = 10 // min
+        {
+            didSet {
+                if self.interval <= 0 {
+                    print("[Pedometer][Illegal Parameter]",
+                          "The 'interval' value has to be greater than 0.",
+                          "This parameter ('\(self.interval)' is ignored.)")
+                    self.interval = oldValue
+                }
+            }
+        }
+        
         public var sensorObserver:PedometerObserver?
         
         public override init() {
@@ -86,6 +102,7 @@ public class PedometerSensor: AwareSensor {
                         if self.CONFIG.debug { print(PedometerSensor.TAG, "skip: a recovery roop is running") }
                     }
                 })
+                timer?.fire()
                 self.notificationCenter.post(name: .actionAwarePedometerStart , object: nil)
             }
         }
@@ -106,6 +123,13 @@ public class PedometerSensor: AwareSensor {
             })
             self.notificationCenter.post(name: .actionAwarePedometerSync , object: nil)
         }
+    }
+    
+    public func set(label:String){
+        self.CONFIG.label = label
+        self.notificationCenter.post(name: .actionAwarePedometerSetLabel,
+                                     object: nil,
+                                     userInfo: [PedometerSensor.EXTRA_LABEL:label])
     }
     
     ////////////////////////
@@ -195,16 +219,17 @@ extension Notification.Name {
 }
 
 extension PedometerSensor {
-    public static let ACTION_AWARE_PEDOMETER       = "ACTION_AWARE_PEDOMETER"
-    public static let ACTION_AWARE_PEDOMETER_START = "action.aware.pedometer.SENSOR_START"
-    public static let ACTION_AWARE_PEDOMETER_STOP  = "action.aware.pedometer.SENSOR_STOP"
-    public static let ACTION_AWARE_PEDOMETER_SET_LABEL = "action.aware.pedometer.SET_LABEL"
-    public static let ACTION_AWARE_PEDOMETER_SYNC  = "action.aware.pedometer.SENSOR_SYNC"
+    public static let ACTION_AWARE_PEDOMETER       = "com.awareframework.ios.sensor.pedometer"
+    public static let ACTION_AWARE_PEDOMETER_START = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_START"
+    public static let ACTION_AWARE_PEDOMETER_STOP  = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_STOP"
+    public static let ACTION_AWARE_PEDOMETER_SET_LABEL = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_SET_LABEL"
+    public static let ACTION_AWARE_PEDOMETER_SYNC  = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_SYNC"
+    public static let EXTRA_LABEL = "label"
 }
 
 extension PedometerSensor {
     
-    public static let KEY_LAST_UPDATE_DATETIME = "com.aware.ios.sensor.pedometer.key.last_update_datetime";
+    public static let KEY_LAST_UPDATE_DATETIME = "com.awareframework.ios.sensor.pedometer.key.last_update_datetime";
     
     public func getFomattedDateTime(_ date:Date) -> Date?{
         let calendar = Calendar.current
