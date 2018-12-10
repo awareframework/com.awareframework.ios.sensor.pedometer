@@ -103,7 +103,7 @@ public class PedometerSensor: AwareSensor {
                     }
                 })
                 timer?.fire()
-                self.notificationCenter.post(name: .actionAwarePedometerStart , object: nil)
+                self.notificationCenter.post(name: .actionAwarePedometerStart , object: self)
             }
         }
     }
@@ -112,7 +112,7 @@ public class PedometerSensor: AwareSensor {
         if let uwTimer = timer {
             uwTimer.invalidate()
             timer = nil
-            self.notificationCenter.post(name: .actionAwarePedometerStop , object: nil)
+            self.notificationCenter.post(name: .actionAwarePedometerStop , object: self)
         }
     }
     
@@ -120,15 +120,26 @@ public class PedometerSensor: AwareSensor {
         if let engine = self.dbEngine {
             engine.startSync(PedometerData.TABLE_NAME, PedometerData.self, DbSyncConfig().apply{config in
                 config.debug = self.CONFIG.debug
+                config.dispatchQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.sync.queue")
+                config.completionHandler = { (status, error) in
+                    var userInfo: Dictionary<String,Any> = [PedometerSensor.EXTRA_STATUS :status]
+                    if let e = error {
+                        userInfo[PedometerSensor.EXTRA_ERROR] = e
+                    }
+                    self.notificationCenter.post(name: .actionAwarePedometerSyncCompletion,
+                                                 object: self,
+                                                 userInfo:userInfo)
+                }
+
             })
-            self.notificationCenter.post(name: .actionAwarePedometerSync , object: nil)
+            self.notificationCenter.post(name: .actionAwarePedometerSync , object: self)
         }
     }
     
-    public func set(label:String){
+    public override func set(label:String){
         self.CONFIG.label = label
         self.notificationCenter.post(name: .actionAwarePedometerSetLabel,
-                                     object: nil,
+                                     object: self,
                                      userInfo: [PedometerSensor.EXTRA_LABEL:label])
     }
     
@@ -168,10 +179,6 @@ public class PedometerSensor: AwareSensor {
                             data.floorsDescended = floorsDescended.intValue
                         }
                         
-                        if let engine = self.dbEngine {
-                            engine.save(data, PedometerData.TABLE_NAME)
-                        }
-                        
                         if self.CONFIG.debug {
                             print(PedometerSensor.TAG, "\(fromDate) - \(toDate) : \(pedoData.numberOfSteps.intValue)" )
                         }
@@ -180,16 +187,41 @@ public class PedometerSensor: AwareSensor {
                             observer.onPedometerChanged(data: data)
                         }
                         
-                        self.notificationCenter.post(name: .actionAwarePedometer , object: nil)
-                    }
-                    
-                    self.setLastUpdateDateTime(toDate)
-                    let diffBetweenNowAndToDate = now.minutes(from: toDate)
-                    if diffBetweenNowAndToDate > Int(self.CONFIG.interval){
-                        self.inRecoveryLoop = true;
-                        self.getPedometerData()
-                    }else{
-                        self.inRecoveryLoop = false;
+
+                        if let engine = self.dbEngine {
+                            let queue = DispatchQueue(label:"com.awareframework.ios.sensor.pedometer.save.queue")
+                            queue.async {
+                                engine.save(data) { error in
+                                    if error == nil {
+                                        DispatchQueue.main.async {
+                                            self.notificationCenter.post(name: .actionAwarePedometer , object: self)
+                                            self.setLastUpdateDateTime(toDate)
+                                            let diffBetweenNowAndToDate = now.minutes(from: toDate)
+                                            if diffBetweenNowAndToDate > Int(self.CONFIG.interval){
+                                                self.inRecoveryLoop = true;
+                                                self.getPedometerData()
+                                            }else{
+                                                self.inRecoveryLoop = false;
+                                            }
+                                        }
+                                    }else{
+                                        DispatchQueue.main.async {
+                                            print(error!)
+                                            self.inRecoveryLoop = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }else{
+                            self.setLastUpdateDateTime(toDate)
+                            let diffBetweenNowAndToDate = now.minutes(from: toDate)
+                            if diffBetweenNowAndToDate > Int(self.CONFIG.interval){
+                                self.inRecoveryLoop = true;
+                                self.getPedometerData()
+                            }else{
+                                self.inRecoveryLoop = false;
+                            }
+                        }
                     }
                 }
             }else{
@@ -216,6 +248,7 @@ extension Notification.Name {
     public static let actionAwarePedometerStop     = Notification.Name(PedometerSensor.ACTION_AWARE_PEDOMETER_STOP)
     public static let actionAwarePedometerSync     = Notification.Name(PedometerSensor.ACTION_AWARE_PEDOMETER_SYNC)
     public static let actionAwarePedometerSetLabel = Notification.Name(PedometerSensor.ACTION_AWARE_PEDOMETER_SET_LABEL)
+    public static let actionAwarePedometerSyncCompletion  = Notification.Name(PedometerSensor.ACTION_AWARE_PEDOMETER_SYNC_COMPLETION)
 }
 
 extension PedometerSensor {
@@ -225,6 +258,12 @@ extension PedometerSensor {
     public static let ACTION_AWARE_PEDOMETER_SET_LABEL = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_SET_LABEL"
     public static let ACTION_AWARE_PEDOMETER_SYNC  = "com.awareframework.ios.sensor.pedometer.ACTION_AWARE_PEDOMETER_SYNC"
     public static let EXTRA_LABEL = "label"
+
+    
+    public static let ACTION_AWARE_PEDOMETER_SYNC_COMPLETION = "com.awareframework.ios.sensor.pedometer.SENSOR_SYNC_COMPLETION"
+    public static let EXTRA_STATUS = "status"
+    public static let EXTRA_ERROR = "error"
+
 }
 
 extension PedometerSensor {

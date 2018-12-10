@@ -1,6 +1,7 @@
 import XCTest
 import RealmSwift
 import com_awareframework_ios_sensor_pedometer
+import com_awareframework_ios_sensor_core
 
 class Tests: XCTestCase {
     
@@ -24,13 +25,9 @@ class Tests: XCTestCase {
         
         class Observer:PedometerObserver{
             weak var pedometerExpectation: XCTestExpectation?
-            var callback:(()->Void)? = nil
             func onPedometerChanged(data: PedometerData) {
                 print(#function)
                 self.pedometerExpectation?.fulfill()
-                if let cb = callback {
-                    cb()
-                }
             }
         }
         
@@ -41,14 +38,9 @@ class Tests: XCTestCase {
             config.sensorObserver = observer
             config.dbType = .REALM
         })
-        observer.callback = {
-            if let engine = sensor.dbEngine {
-                if let results = engine.fetch(PedometerData.TABLE_NAME, PedometerData.self, nil) as? Results<Object>{
-                    XCTAssertGreaterThanOrEqual(results.count, 1)
-                }else{
-                    XCTFail()
-                }
-            }
+        
+        if let engine = sensor.dbEngine {
+            engine.removeAll(PedometerData.self)
         }
         
         sensor.setLastUpdateDateTime(Date().addingTimeInterval(-1*60*60))
@@ -164,5 +156,72 @@ class Tests: XCTestCase {
         XCTAssertEqual(dict["floorsAscended"] as? Int, 0)
         XCTAssertEqual(dict["floorsDescended"] as? Int, 0)
         XCTAssertEqual(dict["averageActivePace"] as? Double, 0)
+    }
+    
+    func testSyncModule(){
+        #if targetEnvironment(simulator)
+        
+        print("This test requires a real Pedometer.")
+        
+        #else
+        // success //
+        let sensor = PedometerSensor.init(PedometerSensor.Config().apply{ config in
+            config.debug = true
+            config.dbType = .REALM
+            config.dbHost = "node.awareframework.com:1001"
+            config.dbPath = "sync_db"
+        })
+        if let engine = sensor.dbEngine as? RealmEngine {
+            engine.removeAll(PedometerData.self)
+            for _ in 0..<100 {
+                engine.save(PedometerData())
+            }
+        }
+        let successExpectation = XCTestExpectation(description: "success sync")
+        let observer = NotificationCenter.default.addObserver(forName: Notification.Name.actionAwarePedometerSyncCompletion,
+                                                              object: sensor, queue: .main) { (notification) in
+                                                                if let userInfo = notification.userInfo{
+                                                                    if let status = userInfo["status"] as? Bool {
+                                                                        if status == true {
+                                                                            successExpectation.fulfill()
+                                                                        }
+                                                                    }
+                                                                }
+        }
+        sensor.sync(force: true)
+        wait(for: [successExpectation], timeout: 20)
+        NotificationCenter.default.removeObserver(observer)
+        
+        ////////////////////////////////////
+        
+        // failure //
+        let sensor2 = PedometerSensor.init(PedometerSensor.Config().apply{ config in
+            config.debug = true
+            config.dbType = .REALM
+            config.dbHost = "node.awareframework.com.com" // wrong url
+            config.dbPath = "sync_db"
+        })
+        let failureExpectation = XCTestExpectation(description: "failure sync")
+        let failureObserver = NotificationCenter.default.addObserver(forName: Notification.Name.actionAwarePedometerSyncCompletion,
+                                                                     object: sensor2, queue: .main) { (notification) in
+                                                                        if let userInfo = notification.userInfo{
+                                                                            if let status = userInfo["status"] as? Bool {
+                                                                                if status == false {
+                                                                                    failureExpectation.fulfill()
+                                                                                }
+                                                                            }
+                                                                        }
+        }
+        if let engine = sensor2.dbEngine as? RealmEngine {
+            engine.removeAll(PedometerData.self)
+            for _ in 0..<100 {
+                engine.save(PedometerData())
+            }
+        }
+        sensor2.sync(force: true)
+        wait(for: [failureExpectation], timeout: 20)
+        NotificationCenter.default.removeObserver(failureObserver)
+        
+        #endif
     }
 }
