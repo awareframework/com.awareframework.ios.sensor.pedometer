@@ -178,6 +178,7 @@ public class PedometerSensor: AwareSensor {
                         if let floorsDescended = pedoData.floorsDescended {
                             data.floorsDescended = floorsDescended.intValue
                         }
+                        data.label = self.CONFIG.label
                         
                         if self.CONFIG.debug {
                             print(PedometerSensor.TAG, "\(fromDate) - \(toDate) : \(pedoData.numberOfSteps.intValue)" )
