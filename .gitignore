@@ -38,3 +38,8 @@ Pods/
 Podfile.lock
 Pods/
 com.awareframework.ios.sensor.pedometer.xcworkspace/
+
+.build
+Packages
+.swiftpm
+.*.sw?
