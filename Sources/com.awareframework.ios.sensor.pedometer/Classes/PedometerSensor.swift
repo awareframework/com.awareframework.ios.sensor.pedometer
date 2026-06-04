@@ -8,7 +8,7 @@
 import UIKit
 import SwiftyJSON
 import CoreMotion
-import com_awareframework_ios_sensor_core
+import com_awareframework_ios_core
 
 public class PedometerSensor: AwareSensor {
     
@@ -118,7 +118,7 @@ public class PedometerSensor: AwareSensor {
     
     override public func sync(force: Bool = false) {
         if let engine = self.dbEngine {
-            engine.startSync(PedometerData.TABLE_NAME, PedometerData.self, DbSyncConfig().apply{config in
+            engine.startSync(DbSyncConfig().apply{config in
                 config.debug = self.CONFIG.debug
                 config.dispatchQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.sync.queue")
                 config.completionHandler = { (status, error) in
@@ -155,9 +155,10 @@ public class PedometerSensor: AwareSensor {
                     
                     // save pedometer data
                     if let pedoData = pedometerData {
-                        let data = PedometerData()
+                        var data = PedometerData()
                         data.startDate = Int64(fromDate.timeIntervalSince1970 * 1000)
                         data.endDate   = Int64(toDate.timeIntervalSince1970   * 1000)
+                        data.timestamp = data.endDate
                         data.numberOfSteps = pedoData.numberOfSteps.intValue
                         
                         if let currentCadence = pedoData.currentCadence{
@@ -192,7 +193,7 @@ public class PedometerSensor: AwareSensor {
                         if let engine = self.dbEngine {
                             let queue = DispatchQueue(label:"com.awareframework.ios.sensor.pedometer.save.queue")
                             queue.async {
-                                engine.save(data) { error in
+                                engine.save([data]) { error in
                                     if error == nil {
                                         DispatchQueue.main.async {
                                             self.notificationCenter.post(name: .actionAwarePedometer , object: self)

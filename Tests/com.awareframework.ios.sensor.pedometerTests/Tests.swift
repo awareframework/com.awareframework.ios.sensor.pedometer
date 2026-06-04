@@ -1,14 +1,12 @@
 import XCTest
-import RealmSwift
 import com_awareframework_ios_sensor_pedometer
-import com_awareframework_ios_sensor_core
+import com_awareframework_ios_core
 
 class Tests: XCTestCase {
     
     override func setUp() {
         super.setUp()
         // Put setup code here. This method is called before the invocation of each test method in the class.
-        Realm.Configuration.defaultConfiguration.inMemoryIdentifier = self.name
     }
     
     override func tearDown() {
@@ -36,7 +34,6 @@ class Tests: XCTestCase {
         observer.pedometerExpectation = pedometerObserverExpect
         let sensor = PedometerSensor.init(PedometerSensor.Config().apply{ config in
             config.sensorObserver = observer
-            config.dbType = .REALM
         })
         
         if let engine = sensor.dbEngine {
@@ -54,7 +51,6 @@ class Tests: XCTestCase {
     
     func testControllers() {
         let sensor = PedometerSensor(PedometerSensor.Config().apply{config in
-            config.dbType = .REALM
         })
         
         /// test set label action ///
@@ -167,7 +163,6 @@ class Tests: XCTestCase {
         // success //
         let sensor = PedometerSensor.init(PedometerSensor.Config().apply{ config in
             config.debug = true
-            config.dbType = .REALM
             config.dbHost = "node.awareframework.com:1001"
             config.dbPath = "sync_db"
         })
@@ -197,7 +192,6 @@ class Tests: XCTestCase {
         // failure //
         let sensor2 = PedometerSensor.init(PedometerSensor.Config().apply{ config in
             config.debug = true
-            config.dbType = .REALM
             config.dbHost = "node.awareframework.com.com" // wrong url
             config.dbPath = "sync_db"
         })
