@@ -10,7 +10,7 @@ public struct PedometerData: BaseDbModelSQLite {
     public var timezone: Int = AwareUtils.getTimeZone()
     public var os: String = "iOS"
     public var jsonVersion: Int = 1
-    public static let databaseTableName = "pedometerData"
+    public static let databaseTableName = "ios_pedometer"
 
     public var startDate: Int64 = 0
     public var endDate: Int64 = 0

@@ -68,29 +68,29 @@ Class to hold the configuration of the sensor.
 
 Contains the raw sensor data.
 
-| Field     | Type   | Description                                                     |
-| --------- | ------ | --------------------------------------------------------------- |
-| startDate      | Int64  | The start time for the pedometer data by unixtime milliseconds since 1970  |
-| endDate        | Int64  | The end time for the pedometer data by unixtime milliseconds since 1970    |
-| numberOfSteps  | Int64  |      The number of steps taken by the user. |
-| distance       | Double  |    The estimated distance (in meters) traveled by the user. |
-| currentPace    | Double  | The current pace of the user, measured in seconds per meter. |
-| currentCadence | Double  | The rate at which steps are taken, measured in steps per second.  |
-| floorsAscended | Double  |The approximate number of floors ascended by walking.|
-| floorsDescended   | Double  |The approximate number of floors descended by walking.|
-| averageActivePace | Double  |The average pace of the user, measured in seconds per meter.
-| label     | String | Customizable label. Useful for data calibration or traceability |
-| deviceId  | String | AWARE device UUID                                               |
-| label     | String | Customizable label. Useful for data calibration or traceability |
-| timestamp | Int64   | Unixtime milliseconds since 1970                                |
-| timezone  | Int    | Raw timezone offset of the device                          |
-| os        | String | Operating system of the device (e.g., ios)                    |
+| Field             | Type   | Description                                                     |
+| ----------------- | ------ | --------------------------------------------------------------- |
+| startDate         | Int64  | The start time for the pedometer data by unixtime milliseconds since 1970 |
+| endDate           | Int64  | The end time for the pedometer data by unixtime milliseconds since 1970   |
+| frequencySpeed    | Double | The frequency speed of the user's steps                         |
+| numberOfSteps     | Int    | The number of steps taken by the user.                          |
+| distance          | Double | The estimated distance (in meters) traveled by the user.        |
+| currentPace       | Double | The current pace of the user, measured in seconds per meter.    |
+| currentCadence    | Double | The rate at which steps are taken, measured in steps per second. |
+| floorsAscended    | Int    | The approximate number of floors ascended by walking.           |
+| floorsDescended   | Int    | The approximate number of floors descended by walking.          |
+| averageActivePace | Double | The average pace of the user, measured in seconds per meter.    |
+| label             | String | Customizable label. Useful for data calibration or traceability |
+| deviceId          | String | AWARE device UUID                                               |
+| timestamp         | Int64  | Unixtime milliseconds since 1970                                |
+| timezone          | Int    | Raw timezone offset of the device                               |
+| os                | String | Operating system of the device (e.g., ios)                      |
+| jsonVersion       | Int    | JSON schema version                                             |
 
 ## Example usage
 ```swift
 var pedometer = PedometerSensor.init(PedometerSensor.Config().apply{config in
     config.debug  = true
-    config.dbType = .REALM
     config.sensorObserver = Observer()
 })
 pedometer.start()

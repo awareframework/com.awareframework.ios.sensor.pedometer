@@ -65,6 +65,9 @@ public class PedometerSensor: AwareSensor {
         super.init()
         CONFIG = config
         initializeDbEngine(config: config)
+        super.syncConfig = DbSyncConfig().apply { c in
+            c.dispatchQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.sync.queue")
+        }
     }
     
     override public func start() {
@@ -117,23 +120,15 @@ public class PedometerSensor: AwareSensor {
     }
     
     override public func sync(force: Bool = false) {
-        if let engine = self.dbEngine {
-            engine.startSync(DbSyncConfig().apply{config in
-                config.debug = self.CONFIG.debug
-                config.dispatchQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.sync.queue")
-                config.completionHandler = { (status, error) in
-                    var userInfo: Dictionary<String,Any> = [PedometerSensor.EXTRA_STATUS :status]
-                    if let e = error {
-                        userInfo[PedometerSensor.EXTRA_ERROR] = e
-                    }
-                    self.notificationCenter.post(name: .actionAwarePedometerSyncCompletion,
-                                                 object: self,
-                                                 userInfo:userInfo)
-                }
-
-            })
-            self.notificationCenter.post(name: .actionAwarePedometerSync , object: self)
+        guard let engine = self.dbEngine, let syncConfig = self.syncConfig else { return }
+        syncConfig.debug = self.CONFIG.debug
+        syncConfig.completionHandler = { (status, error) in
+            var userInfo: Dictionary<String,Any> = [PedometerSensor.EXTRA_STATUS: status]
+            if let e = error { userInfo[PedometerSensor.EXTRA_ERROR] = e }
+            self.notificationCenter.post(name: .actionAwarePedometerSyncCompletion, object: self, userInfo: userInfo)
         }
+        engine.startSync(syncConfig)
+        self.notificationCenter.post(name: .actionAwarePedometerSync, object: self)
     }
     
     public override func set(label:String){
