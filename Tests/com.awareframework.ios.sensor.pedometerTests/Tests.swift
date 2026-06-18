@@ -114,30 +114,30 @@ class Tests: XCTestCase {
     }
     
     func testConfig(){
-        let interval = 20
-        let config:Dictionary<String,Any> = ["interval":interval]
+        let sampleIntervalSeconds = 20
+        let config:Dictionary<String,Any> = ["sampleIntervalSeconds":sampleIntervalSeconds]
         
         // default
         var sensor = PedometerSensor()
-        XCTAssertEqual(sensor.CONFIG.interval, 10)
+        XCTAssertEqual(sensor.CONFIG.sampleIntervalSeconds, 600)
         
         // apply
         sensor = PedometerSensor.init(PedometerSensor.Config().apply{config in
-            config.interval = interval
+            config.sampleIntervalSeconds = sampleIntervalSeconds
         })
-        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        XCTAssertEqual(sensor.CONFIG.sampleIntervalSeconds, sampleIntervalSeconds)
         
         // init with dictionary
         sensor = PedometerSensor.init(PedometerSensor.Config(config))
-        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        XCTAssertEqual(sensor.CONFIG.sampleIntervalSeconds, sampleIntervalSeconds)
         
         // set
         sensor = PedometerSensor.init()
         sensor.CONFIG.set(config: config)
-        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        XCTAssertEqual(sensor.CONFIG.sampleIntervalSeconds, sampleIntervalSeconds)
         
-        sensor.CONFIG.interval = -10
-        XCTAssertEqual(sensor.CONFIG.interval, interval)
+        sensor.CONFIG.sampleIntervalSeconds = -10
+        XCTAssertEqual(sensor.CONFIG.sampleIntervalSeconds, sampleIntervalSeconds)
     }
     
     func testPedometerData(){

@@ -2,7 +2,7 @@
 
 [![Swift Package Manager compatible](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-brightgreen.svg)](https://github.com/apple/swift-package-manager)
 
-The Pedometer sensor allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended. 
+The Pedometer sensor allows us to manages historic pedometer data which is provided by [CMPedometer](https://developer.apple.com/documentation/coremotion). The pedometer object contains step counts and other information about the distance traveled and the number of floors ascended or descended.
 
 ## Requirements
 iOS 13 or later
@@ -14,7 +14,7 @@ You can integrate this framework into your project via Swift Package Manager (Sw
 
 ### SwiftPM
 1. Open Package Manager Windows
-    * Open `Xcode` -> Select `Menu Bar` -> `File` -> `App Package Dependencies...` 
+    * Open `Xcode` -> Select `Menu Bar` -> `File` -> `App Package Dependencies...`
 
 2. Find the package using the manager
     * Select `Search Package URL` and type `git@github.com:awareframework/com.awareframework.ios.sensor.pedometer.git`
@@ -25,11 +25,11 @@ You can integrate this framework into your project via Swift Package Manager (Sw
 
 
 
-## Public functions
+## Public Functions
 
 ### PedometerSensor
 
-+ `init(config:PedometerSensor.Config?)` : Initializes the pedometer sensor with the optional configuration.
++ `init(config:PedometerSensor.Config?)`: Initializes the pedometer sensor with the optional configuration.
 + `start()`: Starts the pedometer sensor with the optional configuration.
 + `stop()`: Stops the service.
 
@@ -38,22 +38,23 @@ You can integrate this framework into your project via Swift Package Manager (Sw
 Class to hold the configuration of the sensor.
 
 #### Fields
+
 + `sensorObserver: PedometerObserver`: Callback for live data updates.
-+ `interval : Int`: A sampling duration (minute) of a sample. (default = 10)
-+ `enabled: Boolean` Sensor is enabled or not. (default = `false`)
-+ `debug: Boolean` enable/disable logging to Xcode console. (default = `false`)
-+ `label: String` Label for the data. (default = "")
-+ `deviceId: String` Id of the device that will be associated with the events and the sensor. (default = "")
-+ `dbEncryptionKey` Encryption key for the database. (default = `null`)
-+ `dbType: Engine` Which db engine to use for saving data. (default = `Engine.DatabaseType.NONE`)
-+ `dbPath: String` Path of the database. (default = "aware_pedometer")
-+ `dbHost: String` Host for syncing the database. (default = `null`)
++ `sampleIntervalSeconds: Int`: A sampling duration in seconds. (default = `600`)
++ `enabled: Bool`: Sensor is enabled or not. (default = `false`)
++ `debug: Bool`: Enable/disable logging. (default = `false`)
++ `label: String`: Label for the data. (default = `""`)
++ `deviceId: String`: Id of the device that will be associated with the events and the sensor. (default = `""`)
++ `dbEncryptionKey: String?`: Encryption key for the database. (default = `nil`)
++ `dbType: DatabaseType`: Which db engine to use for saving data. (default = `.none`)
++ `dbPath: String`: Path of the database. (default = `"aware_pedometer"`)
++ `dbHost: String?`: Host for syncing the database. (default = `nil`)
 
 ## Broadcasts
 
 ### Fired Broadcasts
 
-+ `PedometerSensor.ACTION_AWARE_PEDOMETER` fired when pedometer saved data to db after the period ends.
++ `PedometerSensor.ACTION_AWARE_PEDOMETER`: fired when pedometer data is saved to db after the sample interval ends.
 
 ### Received Broadcasts
 
@@ -87,9 +88,9 @@ Contains the raw sensor data.
 | os                | String | Operating system of the device (e.g., ios)                      |
 | jsonVersion       | Int    | JSON schema version                                             |
 
-## Example usage
+## Example Usage
 ```swift
-var pedometer = PedometerSensor.init(PedometerSensor.Config().apply{config in
+var pedometer = PedometerSensor.init(PedometerSensor.Config().apply { config in
     config.debug  = true
     config.sensorObserver = Observer()
 })

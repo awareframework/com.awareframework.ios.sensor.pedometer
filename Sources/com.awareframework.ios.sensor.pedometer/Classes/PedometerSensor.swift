@@ -22,17 +22,17 @@ public class PedometerSensor: AwareSensor {
     public class Config:SensorConfig {
         
         /**
-         * The sensing interval (minute) for step counts. (default = 10 min)
+         * The sensing interval in seconds for step counts. (default = 10 min)
          * This value has to be greater then or equal to 0.
          */
-        public var interval:Int = 10 // min
+        public var sampleIntervalSeconds:Int = 600
         {
             didSet {
-                if self.interval <= 0 {
+                if self.sampleIntervalSeconds <= 0 {
                     print("[Pedometer][Illegal Parameter]",
-                          "The 'interval' value has to be greater than 0.",
-                          "This parameter ('\(self.interval)' is ignored.)")
-                    self.interval = oldValue
+                          "The 'sampleIntervalSeconds' value has to be greater than 0.",
+                          "This parameter ('\(self.sampleIntervalSeconds)' is ignored.)")
+                    self.sampleIntervalSeconds = oldValue
                 }
             }
         }
@@ -46,8 +46,8 @@ public class PedometerSensor: AwareSensor {
         
         public override func set(config: Dictionary<String, Any>) {
             super.set(config: config)
-            if let interval = config["interval"] as? Int{
-                self.interval = interval
+            if let sampleIntervalSeconds = config["sampleIntervalSeconds"] as? Int{
+                self.sampleIntervalSeconds = sampleIntervalSeconds
             }
         }
         
@@ -98,7 +98,7 @@ public class PedometerSensor: AwareSensor {
         if pedometer == nil {
             pedometer = CMPedometer()
             if timer == nil {
-                timer = Timer.scheduledTimer(withTimeInterval: Double(self.CONFIG.interval), repeats: true, block: { timer in
+                timer = Timer.scheduledTimer(withTimeInterval: Double(self.CONFIG.sampleIntervalSeconds), repeats: true, block: { timer in
                     if !self.inRecoveryLoop {
                         self.getPedometerData()
                     }else{
@@ -142,10 +142,9 @@ public class PedometerSensor: AwareSensor {
     public func getPedometerData() {
         if let uwPedometer = pedometer, let fromDate = self.getLastUpdateDateTime(){
             let now = Date()
-            let diffBetweemNowAndFromDate = now.minutes(from: fromDate)
-            // if self.CONFIG.debug{ print(PedometerSensor.TAG, "diff: \(diffBetweemNowAndFromDate) min") }
-            if diffBetweemNowAndFromDate > Int(CONFIG.interval) {
-                let toDate = fromDate.addingTimeInterval( 60.0 * Double(self.CONFIG.interval) )
+            let diffBetweemNowAndFromDate = now.timeIntervalSince(fromDate)
+            if diffBetweemNowAndFromDate > Double(CONFIG.sampleIntervalSeconds) {
+                let toDate = fromDate.addingTimeInterval(Double(self.CONFIG.sampleIntervalSeconds))
                 uwPedometer.queryPedometerData(from: fromDate, to: toDate) { (pedometerData, error) in
                     
                     // save pedometer data
@@ -194,7 +193,7 @@ public class PedometerSensor: AwareSensor {
                                             self.notificationCenter.post(name: .actionAwarePedometer , object: self)
                                             self.setLastUpdateDateTime(toDate)
                                             let diffBetweenNowAndToDate = now.minutes(from: toDate)
-                                            if diffBetweenNowAndToDate > Int(self.CONFIG.interval){
+                                            if Double(diffBetweenNowAndToDate) > Double(self.CONFIG.sampleIntervalSeconds) / 60.0 {
                                                 self.inRecoveryLoop = true;
                                                 self.getPedometerData()
                                             }else{
@@ -212,7 +211,7 @@ public class PedometerSensor: AwareSensor {
                         }else{
                             self.setLastUpdateDateTime(toDate)
                             let diffBetweenNowAndToDate = now.minutes(from: toDate)
-                            if diffBetweenNowAndToDate > Int(self.CONFIG.interval){
+                            if Double(diffBetweenNowAndToDate) > Double(self.CONFIG.sampleIntervalSeconds) / 60.0 {
                                 self.inRecoveryLoop = true;
                                 self.getPedometerData()
                             }else{
