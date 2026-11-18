@@ -9,21 +9,15 @@ iOS 13 or later
 
 ## Installation
 
+Add the package with Swift Package Manager:
 
-You can integrate this framework into your project via Swift Package Manager (SwiftPM).
+- Package URL: `https://github.com/awareframework/com.awareframework.ios.sensor.pedometer.git`
+- Product: `com.awareframework.ios.sensor.pedometer`
+- Module: `import com_awareframework_ios_sensor_pedometer`
 
-### SwiftPM
-1. Open Package Manager Windows
-    * Open `Xcode` -> Select `Menu Bar` -> `File` -> `App Package Dependencies...`
+See the [core package README](https://github.com/awareframework/com.awareframework.ios.core#installation) for the Xcode, `Package.swift` and command-line installation steps.
 
-2. Find the package using the manager
-    * Select `Search Package URL` and type `git@github.com:awareframework/com.awareframework.ios.sensor.pedometer.git`
-
-3. Import the package into your target.
-
-4. Add a description of `NSMotionUsageDescription` into `Info.plist`
-
-
+**Info.plist:** `NSMotionUsageDescription`.
 
 ## Public Functions
 
