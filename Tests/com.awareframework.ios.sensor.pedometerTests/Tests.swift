@@ -206,4 +206,22 @@ class Tests: XCTestCase {
         
         #endif
     }
+
+    /// The sensor creates its own table: rows can be saved and read back for sync without the app
+    /// creating the table (it used to be missing, so every save failed and nothing was synced)
+    func testSensorCreatesItsTable() {
+        let sensor = PedometerSensor(PedometerSensor.Config().apply { config in
+            config.dbPath = "create_table_test_\(UUID().uuidString)"
+        })
+        XCTAssertEqual(sensor.CONFIG.dbTableName, PedometerData.databaseTableName)
+        guard let engine = sensor.dbEngine else { return XCTFail("no engine") }
+        let saved = expectation(description: "saved")
+        engine.save([PedometerData()]) { error in
+            XCTAssertNil(error)
+            saved.fulfill()
+        }
+        wait(for: [saved], timeout: 5)
+        XCTAssertEqual(engine.count(filter: nil), 1)
+        XCTAssertEqual(engine.fetch(filter: nil, limit: nil)?.count, 1, "rows can be read for sync")
+    }
 }
