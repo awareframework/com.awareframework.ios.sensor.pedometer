@@ -18,6 +18,10 @@ public class PedometerSensor: AwareSensor {
     var pedometer:CMPedometer? = nil
     var timer:Timer? = nil
     var inRecoveryLoop = false
+    /// Rows are written here, one batch at a time in the order they were collected: off the main
+    /// thread and off the queue that delivers the query results. `.utility`, since storing data is not work
+    /// the user waits for (a queue created for each save ran at the receiving queue's priority).
+    private let saveQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.save", qos: .utility)
     
     public class Config:SensorConfig {
         
@@ -185,8 +189,7 @@ public class PedometerSensor: AwareSensor {
                         
 
                         if let engine = self.dbEngine {
-                            let queue = DispatchQueue(label:"com.awareframework.ios.sensor.pedometer.save.queue")
-                            queue.async {
+                            self.saveQueue.async {
                                 engine.save([data]) { error in
                                     if error == nil {
                                         DispatchQueue.main.async {
