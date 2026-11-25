@@ -1,5 +1,6 @@
+import CoreMotion
 import XCTest
-import com_awareframework_ios_sensor_pedometer
+@testable import com_awareframework_ios_sensor_pedometer
 import com_awareframework_ios_core
 
 class Tests: XCTestCase {
@@ -152,6 +153,109 @@ class Tests: XCTestCase {
         XCTAssertEqual(dict["floorsAscended"] as? Int, 0)
         XCTAssertEqual(dict["floorsDescended"] as? Int, 0)
         XCTAssertEqual(dict["averageActivePace"] as? Double, 0)
+    }
+
+    func testHistoryCursorPreservesBothOccurrencesOfRepeatedHour() throws {
+        let defaults = UserDefaults.standard
+        let key = PedometerSensor.KEY_LAST_UPDATE_DATETIME
+        let previous = defaults.object(forKey: key)
+        defer { defaults.set(previous, forKey: key) }
+
+        let sensor = PedometerSensor(PedometerSensor.Config().apply { $0.dbType = .none })
+        let iso = ISO8601DateFormatter()
+        // Both instants are 01:00:10 in Los Angeles, on opposite sides of the fall-back transition.
+        let first = try XCTUnwrap(iso.date(from: "2026-11-01T08:00:10Z"))
+        let second = first.addingTimeInterval(3600)
+
+        sensor.setLastUpdateDateTime(first)
+        XCTAssertEqual(sensor.getLastUpdateDateTime(), first)
+        sensor.setLastUpdateDateTime(second)
+        XCTAssertEqual(sensor.getLastUpdateDateTime(), second)
+    }
+
+    func testHistoryWindowAdvancesWithSubMinuteInterval() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_100)
+        let cursor = now.addingTimeInterval(-20)
+        let first = try XCTUnwrap(PedometerSensor.historyWindow(after: cursor, through: now, interval: 10))
+        let second = try XCTUnwrap(PedometerSensor.historyWindow(after: first.end, through: now, interval: 10))
+        XCTAssertEqual(first.start, cursor)
+        XCTAssertEqual(second.start, cursor.addingTimeInterval(10))
+        XCTAssertEqual(second.end, now)
+        XCTAssertNil(PedometerSensor.historyWindow(after: second.end, through: now, interval: 10))
+    }
+
+    func testHistoryWindowClampsExpiredCursorToAvailableHistory() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_100)
+        let cursor = now.addingTimeInterval(-8 * 24 * 60 * 60)
+        let window = try XCTUnwrap(PedometerSensor.historyWindow(after: cursor, through: now, interval: 60))
+        XCTAssertEqual(window.start, now.addingTimeInterval(-7 * 24 * 60 * 60))
+        XCTAssertEqual(window.duration, 60)
+    }
+
+    @MainActor
+    func testRestartIgnoresOldCallbackAndKeepsNewQueryInFlight() async {
+        final class StubPedometer: CMPedometer {
+            private var callback: CMPedometerHandler?
+            private(set) var queryCount = 0
+
+            override func queryPedometerData(from start: Date, to end: Date, withHandler handler: @escaping CMPedometerHandler) {
+                queryCount += 1
+                callback = handler
+            }
+
+            func returnNoData() {
+                let handler = callback
+                callback = nil
+                handler?(nil, nil)
+            }
+        }
+
+        let defaults = UserDefaults.standard
+        let key = PedometerSensor.KEY_LAST_UPDATE_DATETIME
+        let previous = defaults.object(forKey: key)
+        defer { defaults.set(previous, forKey: key) }
+
+        let oldManager = StubPedometer()
+        let newManager = StubPedometer()
+        var managers: [CMPedometer] = [oldManager, newManager]
+        let config = PedometerSensor.Config().apply {
+            $0.dbType = .none
+            $0.sampleIntervalSeconds = 60
+        }
+        let sensor = PedometerSensor(config, makePedometer: {
+            managers.isEmpty ? nil : managers.removeFirst()
+        })
+        defer { sensor.stop() }
+        let cursor = Date().addingTimeInterval(-120)
+        sensor.setLastUpdateDateTime(cursor)
+
+        sensor.start()
+        sensor.getPedometerData()
+        XCTAssertEqual(oldManager.queryCount, 1)
+
+        sensor.stop()
+        sensor.getPedometerData()
+        XCTAssertEqual(oldManager.queryCount, 1)
+        sensor.start()
+        XCTAssertEqual(newManager.queryCount, 1)
+
+        oldManager.returnNoData()
+        await drainPendingCallback()
+        sensor.getPedometerData()
+        XCTAssertEqual(newManager.queryCount, 1)
+
+        newManager.returnNoData()
+        await drainPendingCallback()
+        XCTAssertEqual(sensor.getLastUpdateDateTime(), cursor)
+        sensor.getPedometerData()
+        XCTAssertEqual(newManager.queryCount, 2)
+    }
+
+    @MainActor
+    private func drainPendingCallback() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async { continuation.resume() }
+        }
     }
     
     func testSyncModule(){
