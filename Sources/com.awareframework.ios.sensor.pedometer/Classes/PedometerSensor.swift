@@ -16,7 +16,6 @@ public class PedometerSensor: AwareSensor {
     public var CONFIG:PedometerSensor.Config = Config()
     
     private static let historyLimit: TimeInterval = 7 * 24 * 60 * 60
-    private static let windowsPerTick = 60
 
     // Lifecycle and the query/save slot are owned by the main queue. A new manager identifies a new run.
     private var pedometer: CMPedometer?
@@ -28,6 +27,16 @@ public class PedometerSensor: AwareSensor {
     /// thread and off the queue that delivers the query results. `.utility`, since storing data is not work
     /// the user waits for (a queue created for each save ran at the receiving queue's priority).
     private let saveQueue = DispatchQueue(label: "com.awareframework.ios.sensor.pedometer.save", qos: .utility)
+
+    // MARK: Debug trace (CONFIG.debug): see HistoryTrace. Main queue only.
+    let trace = HistoryTrace(name: "pedometer", tag: PedometerSensor.TAG)
+    private static let stallThreshold: TimeInterval = 120
+    private var runID = 0
+    private var tickCount = 0
+    private var querySeq = 0
+    private var queryStartedAt: Date?
+    private var queryWindow: DateInterval?
+    private var saveStartedAt: Date?
     
     public class Config:SensorConfig {
         
@@ -122,12 +131,16 @@ public class PedometerSensor: AwareSensor {
         }
 
         pedometer = manager
+        runID += 1
+        trace.isEnabled = CONFIG.debug
+        trace.log("START run=\(runID) authorization=\(CMPedometer.authorizationStatus().rawValue) interval=\(CONFIG.sampleIntervalSeconds)s cursor=\(trace.format(UserDefaults.standard.object(forKey: Self.KEY_LAST_UPDATE_DATETIME) as? Date)) isQuerying=\(isQuerying) isSaving=\(isSaving)")
         timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(CONFIG.sampleIntervalSeconds), repeats: true) { [weak self] firedTimer in
             guard let self else {
                 firedTimer.invalidate()
                 return
             }
             guard self.timer === firedTimer else { return }
+            self.traceTick()
             self.getPedometerData()
         }
         timer?.fire()
@@ -140,6 +153,7 @@ public class PedometerSensor: AwareSensor {
             return
         }
         guard pedometer != nil else { return }
+        trace.log("STOP run=\(runID) isQuerying=\(isQuerying) (#\(querySeq)) isSaving=\(isSaving) cursor=\(trace.format(UserDefaults.standard.object(forKey: Self.KEY_LAST_UPDATE_DATETIME) as? Date))")
         timer?.invalidate()
         timer = nil
         pedometer = nil
@@ -173,7 +187,8 @@ public class PedometerSensor: AwareSensor {
             return
         }
         guard let pedometer else { return }
-        fetchNextWindow(using: pedometer, through: Date(), remaining: Self.windowsPerTick)
+        // Each tick catches up to now: a window takes a few milliseconds, so there is no per-tick limit
+        fetchNextWindow(using: pedometer, through: Date(), done: 0)
     }
 
     static func historyWindow(after cursor: Date, through now: Date, interval: TimeInterval) -> DateInterval? {
@@ -184,17 +199,37 @@ public class PedometerSensor: AwareSensor {
         return DateInterval(start: start, end: end)
     }
 
-    private func fetchNextWindow(using pedometer: CMPedometer, through now: Date, remaining: Int) {
-        guard self.pedometer === pedometer, !isQuerying, !isSaving, remaining > 0,
-              let cursor = getLastUpdateDateTime(),
-              let window = Self.historyWindow(after: cursor, through: now,
-                                              interval: TimeInterval(CONFIG.sampleIntervalSeconds)) else { return }
+    private func fetchNextWindow(using pedometer: CMPedometer, through now: Date, done: Int) {
+        guard self.pedometer === pedometer else { return traceTickEnd(done, "stale manager (stopped/restarted)") }
+        guard !isQuerying else { return traceTickEnd(done, "busy: query #\(querySeq) outstanding \(age(queryStartedAt))") }
+        guard !isSaving else { return traceTickEnd(done, "busy: save outstanding \(age(saveStartedAt))") }
+        guard let cursor = getLastUpdateDateTime() else { return traceTickEnd(done, "no cursor") }
+        guard let window = Self.historyWindow(after: cursor, through: now,
+                                              interval: TimeInterval(CONFIG.sampleIntervalSeconds)) else {
+            return traceTickEnd(done, "caught up (cursor=\(trace.format(cursor)))")
+        }
         isQuerying = true
+        querySeq += 1
+        let seq = querySeq
+        let run = runID
+        let issuedAt = Date()
+        queryStartedAt = issuedAt
+        queryWindow = window
         pedometer.queryPedometerData(from: window.start, to: window.end) { [weak self, weak pedometer] result, error in
+            let calledBackAt = Date()
             DispatchQueue.main.async {
-                guard let self, let pedometer, self.pedometer === pedometer else { return }
+                guard let self else { return }
+                let queryMs = Int(calledBackAt.timeIntervalSince(issuedAt) * 1000)
+                let hopMs = Int(Date().timeIntervalSince(calledBackAt) * 1000)
+                guard let pedometer, self.pedometer === pedometer else {
+                    self.trace.log("LATE query #\(seq) of run \(run) answered after \(queryMs)ms; current run=\(self.runID) isQuerying=\(self.isQuerying)")
+                    return
+                }
                 self.isQuerying = false
+                self.queryStartedAt = nil
                 guard error == nil, let result else {
+                    let nsError = error as NSError?
+                    self.trace.log("QUERY #\(seq) FAILED \(self.trace.format(window.start))..\(self.trace.format(window.end)) after \(queryMs)ms hop=\(hopMs)ms error=\(nsError.map { "\($0.domain)/\($0.code) \($0.localizedDescription)" } ?? "nil result")")
                     if self.CONFIG.debug {
                         print(Self.TAG, "Pedometer history query failed:", error?.localizedDescription ?? "No data")
                     }
@@ -215,7 +250,7 @@ public class PedometerSensor: AwareSensor {
                 data.label = self.CONFIG.label
 
                 if self.CONFIG.dbType == .none {
-                    self.finishWindow(data, end: window.end, using: pedometer, through: now, remaining: remaining)
+                    self.finishWindow(data, end: window.end, using: pedometer, through: now, done: done)
                     return
                 }
                 guard let engine = self.dbEngine else {
@@ -224,16 +259,25 @@ public class PedometerSensor: AwareSensor {
                 }
                 let row = data
                 self.isSaving = true
+                let saveQueuedAt = Date()
+                self.saveStartedAt = saveQueuedAt
                 self.saveQueue.async { [weak self] in
+                    let saveBeganAt = Date()
                     engine.save([row]) { error in
+                        let savedAt = Date()
                         DispatchQueue.main.async {
                             guard let self else { return }
                             self.isSaving = false
+                            self.saveStartedAt = nil
+                            let waitMs = Int(saveBeganAt.timeIntervalSince(saveQueuedAt) * 1000)
+                            let saveMs = Int(savedAt.timeIntervalSince(saveBeganAt) * 1000)
                             if let error {
+                                self.trace.log("SAVE #\(seq) FAILED after wait=\(waitMs)ms save=\(saveMs)ms error=\(error)")
                                 print(Self.TAG, "Pedometer history save failed:", error)
                                 return
                             }
-                            self.finishWindow(row, end: window.end, using: pedometer, through: now, remaining: remaining)
+                            self.trace.log("WIN #\(seq) \(self.trace.format(window.start)) steps=\(row.numberOfSteps) query=\(queryMs)ms hop=\(hopMs)ms saveWait=\(waitMs)ms save=\(saveMs)ms")
+                            self.finishWindow(row, end: window.end, using: pedometer, through: now, done: done)
                         }
                     }
                 }
@@ -241,8 +285,34 @@ public class PedometerSensor: AwareSensor {
         }
     }
 
+    // MARK: Debug trace
+
+    private func age(_ date: Date?) -> String {
+        guard let date else { return "?s" }
+        return String(format: "%.1fs", Date().timeIntervalSince(date))
+    }
+
+    /// One line per timer tick, and a STALL line while a query or save has not finished for long
+    private func traceTick() {
+        tickCount += 1
+        trace.isEnabled = CONFIG.debug
+        guard trace.isEnabled else { return }
+        let cursor = UserDefaults.standard.object(forKey: Self.KEY_LAST_UPDATE_DATETIME) as? Date
+        trace.log("TICK #\(tickCount) run=\(runID) app=\(trace.appState) protectedData=\(trace.protectedDataAvailable) manager=\(pedometer != nil) isQuerying=\(isQuerying) isSaving=\(isSaving) cursor=\(trace.format(cursor)) lag=\(cursor.map { Int(Date().timeIntervalSince($0) / 60) } ?? -1)min")
+        if isQuerying, let started = queryStartedAt, Date().timeIntervalSince(started) > Self.stallThreshold {
+            trace.log("STALL query #\(querySeq) outstanding \(age(started)) window=\(trace.format(queryWindow?.start))..\(trace.format(queryWindow?.end)) authorization=\(CMPedometer.authorizationStatus().rawValue)")
+        }
+        if isSaving, let started = saveStartedAt, Date().timeIntervalSince(started) > Self.stallThreshold {
+            trace.log("STALL save outstanding \(age(started))")
+        }
+    }
+
+    private func traceTickEnd(_ windows: Int, _ reason: String) {
+        trace.log("TICK END windows=\(windows) reason=\(reason)")
+    }
+
     private func finishWindow(_ data: PedometerData, end: Date, using pedometer: CMPedometer,
-                              through now: Date, remaining: Int) {
+                              through now: Date, done: Int) {
         if let cursor = getLastUpdateDateTime(), cursor < end {
             setLastUpdateDateTime(end)
         }
@@ -250,7 +320,7 @@ public class PedometerSensor: AwareSensor {
         CONFIG.sensorObserver?.onPedometerChanged(data: data)
         guard self.pedometer === pedometer else { return }
         notificationCenter.post(name: .actionAwarePedometer, object: self)
-        fetchNextWindow(using: pedometer, through: now, remaining: remaining - 1)
+        fetchNextWindow(using: pedometer, through: now, done: done + 1)
     }
 }
 

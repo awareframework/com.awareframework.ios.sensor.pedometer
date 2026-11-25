@@ -251,6 +251,49 @@ class Tests: XCTestCase {
         XCTAssertEqual(newManager.queryCount, 2)
     }
 
+    /// One tick catches up to now, however many windows are behind (there was a limit of 60).
+    @MainActor
+    func testOneTickCatchesUpBeyondSixtyWindows() async throws {
+        final class StepData: CMPedometerData {
+            override var numberOfSteps: NSNumber { 1 }
+        }
+        final class ImmediatePedometer: CMPedometer {
+            private(set) var queryCount = 0
+            override func queryPedometerData(from start: Date, to end: Date, withHandler handler: @escaping CMPedometerHandler) {
+                queryCount += 1
+                DispatchQueue.global().async { handler(StepData(), nil) }
+            }
+        }
+
+        let defaults = UserDefaults.standard
+        let key = PedometerSensor.KEY_LAST_UPDATE_DATETIME
+        let previous = defaults.object(forKey: key)
+        defer { defaults.set(previous, forKey: key) }
+
+        let manager = ImmediatePedometer()
+        let config = PedometerSensor.Config().apply {
+            $0.dbType = .none
+            $0.sampleIntervalSeconds = 60
+        }
+        let sensor = PedometerSensor(config, makePedometer: { manager })
+        defer { sensor.stop() }
+        let behind = 180
+        let cursor = Date().addingTimeInterval(-Double(behind * 60) - 30)
+        sensor.setLastUpdateDateTime(cursor)
+
+        sensor.start()  // fires the first tick
+        // Wait for the last window to be finished (its cursor update), not only queried
+        let target = cursor.addingTimeInterval(Double(behind * 60))
+        let deadline = Date().addingTimeInterval(10)
+        while (sensor.getLastUpdateDateTime() ?? cursor) < target, Date() < deadline {
+            await drainPendingCallback()
+        }
+
+        XCTAssertEqual(manager.queryCount, behind)
+        let advanced = try XCTUnwrap(sensor.getLastUpdateDateTime())
+        XCTAssertEqual(advanced.timeIntervalSince(cursor), Double(behind * 60), accuracy: 0.001)
+    }
+
     @MainActor
     private func drainPendingCallback() async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
